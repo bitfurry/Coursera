@@ -1,0 +1,266 @@
+Investigation of the Working Status by Gender
+========================
+
+```{r echo=FALSE}
+load(url("http://bit.ly/dasi_gss_data"))
+```
+
+Introduction
+-----------------------
+The goal of this work is to investigate the relation of gender and the working status of the subject. By working status we have 8 possible outcomes: working fulltime, working part time, temporally not working, umemployed, retired, attending school, keeping house and other. The kind of questions that this work aims to answer are: is it true that women are more likely to be the "stay at home"? proportionately, men or women have more full time jobs? which gender has a larger proportion of school attendance?
+
+We believe these questions are important to answer because they may point to a possible gender discrimination and helps to understand how our scoiety is structured. Also, given that our data [GSS2012] goes from `r min(gss$year)` until `r max(gss$year)`, we will analyse how these working status changed along time.
+
+Data
+-----------------------
+The data that was used at this work is the General Social Survey (GSS) [GSS2012], which is a survey about demographics characteristics and attitudes of residents of the United States of America. This survey has been conducted since 1972 (until 2012) and is done by an in-person interviewer from National Opinion Research Center with adults (18+) of randomly selected households. Given that the residents were selected at random, findings on this sample are generalizable to the population of residents of the USA that are older or equal than 18 years old. But, this is an observational study, because there was no random assignment of the subjects to social conditions, so this leads to the constrain that no causality links can be estabilished, only correlations.
+
+A case of this data set are the answers of the subject interviewed to the general social survey. This survey is composed of questions about personal and family information (age, gender, working status, martial status, race, etc), attitudes towards national problems (crime, military and social security issues), attitudes towards controversial social issues (abortion, suicide, family planning, sex, etc.) and many others. In total, this data set has 114 attributes collected from 57061 subjects from 1972-2012. Of the 114 attributes, only 2 of them were used at this work: 
+
+* gender[sex]: categorical variable with 2 possible outcomes: male and female.
+* working status[wrkstat]: categorial variable with 8 possible outcomes: working fulltime, working part time, temporally not working, umemployed, retired, attending school, keeping house and other
+
+
+Exploratory data analysis
+-----------------------
+
+In order to ensure that no pre-processing on the data was required, some summary statistics were calculated. Below follows the breakdown of working status on the data set:
+
+```{r echo=FALSE}
+table(gss$wrkstat)
+```
+
+And the breakdown of gender:
+
+```{r echo=FALSE}
+table(gss$sex)
+```
+
+It's clear from these tables that there is no NAs and no unexpected values (answers).
+
+In order to get a sense of how big/small the sample was among the years, bellow follows a bar plot of the sample size by year (with the breakdown by gender too):
+
+```{r echo=FALSE, fig.width=10, fig.height=5}
+par(las=2)
+counts <- table(gss$sex, gss$year)
+barplot(counts, main="Sample size of the GSS among the years", xlab="Year", ylab="Sample size", col=c("blue", "red"), legend = rownames(counts))
+par(las=0)
+```
+
+From this bar plot we can conclude that the sample size was around 2000 subjects per year and had a balanced amount of women and men interviewed. As a reminder, and to better asssess the sample size, the population of the United States of America in [1972 was around 213 million people](http://www.wolframalpha.com/input/?i=population+of+the+united+states+in+1972), and in [2012 it was 316 million people](http://www.wolframalpha.com/input/?i=population+of+the+united+states+in+2012) (including the ones younger than 18 years old).
+
+Once determined that the sample size seems to be adequate and that there was a similar amount of women and men interviewed, we try to get a sense of how the distribution of the working status by gender changed from 1972 to 2012. This is achieved by the following bar plots.
+
+```{r echo=FALSE, fig.width=10, fig.height=5}
+gss1972 <- gss[gss$year == 1972, ]
+counts <- table(gss1972$sex, gss1972$wrkstat)
+counts[1,] <- counts[1,]/sum(as.vector(counts[1,]))
+counts[2,] <- counts[2,]/sum(as.vector(counts[2,]))
+barplot(counts, main="Working Status by Gender in 1972 (GSS)", xlab="Working Status", ylab="Percentage", col=c("blue", "red"), legend = rownames(counts), beside=TRUE, cex.names=0.7)
+```
+
+```{r echo=FALSE, fig.width=10, fig.height=5}
+gss2012 <- gss[gss$year == 2012, ]
+counts <- table(gss2012$sex, gss2012$wrkstat)
+counts[1,] <- counts[1,]/sum(as.vector(counts[1,]))
+counts[2,] <- counts[2,]/sum(as.vector(counts[2,]))
+barplot(counts, main="Working Status by Gender in 2012 (GSS)", xlab="Working Status", ylab="Percentage", col=c("blue", "red"), legend = rownames(counts), beside=TRUE, cex.names=0.7)
+```
+
+From these bar plots it's possible to observe a dramatic reduction of women that kept the house from around 55% to around 20%. Also, the men that barely kept any houses in 1972, now are about 3%. Another dramatic change is in the amount of women having a full time job, that went from 25% to almost 40%. Other interesting observation is that in 1972 the proportion of women at school was smaller than the men, but in 2012 the situation was reversed and there are more women at school. And one interesting obervation about the overall population, including men and women, is that not only the gap between the genders of retired people has become narrower, but now there are about 20% of men and women retired, indicating that the population of USA is becoming older. 
+
+Inference
+-----------------------
+
+```{r echo=FALSE}
+years <- sort(unique(gss$year))
+counts <- c()
+for(y in years) {
+  tmp <- gss[gss$year == y, ]
+	counts <- rbind(counts, table(tmp$sex, tmp$wrkstat))
+}
+dados <- data.frame(sex=rep(c('M','F'),29), fulltime=as.vector(counts[,1]), parttime=as.vector(counts[,2]), temp=as.vector(counts[,3]), unemployed=as.vector(counts[,4]), retired=as.vector(counts[,5]), school=as.vector(counts[,6]), keeping=as.vector(counts[,7]), others=as.vector(counts[,8]), year=rep(years, 1, each=2))
+dadosM <- dados[dados$sex=='M', ]
+dadosF <- dados[dados$sex=='F', ]
+```
+
+We begin this section by stating that the confidence intervals and the hypotheses testing were performed on the proportion of the sample in order to infer the true proportion or the difference of the proportions. In order to performance this analysis two conditions must be met:
+
+* Success-failure condition;
+* Sampled observations must be independent.
+
+The first condition, of having at least 10 "failures" and 10 "successes" is met by the male population for all working status with the exception of keeping the house, temporaly umemployed and other. And for the women population this condition is not met only for the working status of temporaly umemployed, umemployed and other.
+
+The second conditon is met for both populations because we have less than 10% of the population sampled (refer to the section about exploratory data analysis).
+
+From the exploratory data analysis 3 conditions caught our attention:
+
+* The reduction of women that kept the house;
+* Amount of women employed in a full time job;
+* And the surge of women attending school.
+
+For the first observation we note that, unfortunately, it's not possible to do a comparison of the male population also keeping the house because they do not meet the success-failure condition, so we are constrained to analyse only the change of women keeping the house along the time. The following plot shows the propotion of women keeping the house along the years with a 95% confidence interval.
+
+```{r echo=FALSE, fig.width=10, fig.height=4}
+tmpF <- c()
+meF <- c()
+epsilon = 0.2
+for(y in 1:length(years)) {	
+	n <- sum(dadosF[y,2:8])
+	pr <- dadosF$keeping[y]/n
+	tmpF <- c(tmpF, pr)
+	meF <- c(meF, qnorm(p=0.975)*sqrt(pr*(1-pr)/n))
+}
+plot(tmpF ~ dadosF$year, type="b", col="red", ylim=c(0.1,0.6), xlab="Year", ylab="Percentage", main="Percentage of women keeping the house along the years", xaxt="n")
+segments(years, tmpF-meF, years, tmpF+meF, col="red")
+segments(years-epsilon,tmpF-meF,years+epsilon,tmpF-meF, col="red")
+segments(years-epsilon,tmpF+meF,years+epsilon,tmpF+meF, col="red")
+axis(1, at = years, las=2)
+legend("topright", col=c("red"), legend=c("Women (95% CI)"), lty=1)
+```
+
+Visually it's clear that the confidence interval for the proportions at the year 1972 and 2012 do not cross, indicating that there is evidence to reject the null hypothesis at $\alpha = 5\%$. Regardless, lets define the hypothesis and test it:
+
+$$ H_{0}: p_{1972} - p_{2012} = 0 $$
+$$ H_{A}: p_{1972} - p_{2012} \neq 0$$
+
+Lets define $\alpha$ at 5%. We have that $\hat{p_{1972}} = 0.5397226$, $\hat{p_{2012}} = 0.1768579$,  $n_{1972} = 793$ and $n_{2012} = 1063$. With these values we have $z_{\alpha = 5\%}$ equal to `r qnorm(p=0.975)` and a standard error of `r sqrt((0.5397226*(1-0.5397226))/793 + (0.1768579*(1-0.1768579))/1063)`, totaling a margin of error of `r qnorm(p=0.975) * sqrt((0.5397226*(1-0.5397226))/793 + (0.1768579*(1-0.1768579))/1063)`. By the null hypothesis we should have a difference of 0 by subtracting the differences, then:
+
+$$ (0.5397226-0.1768579) - 0.0416; (0.5397226-0.1768579) + 0.0416$$
+$$ 0.3628647 - 0.0416; 0.3628647 + 0.0416 $$
+$$ (0.3211648; 0.4045646) $$
+
+As the confidence interval of the difference of the proportions do not include 0, we can conclude that at a 95% confidence level there is a difference and we reject the null hypothesis (the $p-value$ is `r 2*(1-pnorm((0.5397226-0.1768579)/sqrt((0.5397226*(1-0.5397226))/793 + (0.1768579*(1-0.1768579))/1063)))`, as it's `r (0.5397226-0.1768579)/sqrt((0.5397226*(1-0.5397226))/793 + (0.1768579*(1-0.1768579))/1063)` standard erros away from the assumed difference of 0).
+
+Now, for the second observation, that women have increased their presence among the ones that have a full time job, we can compare them to the male population in year-by-year because both of the populations meet the conditions for the tests. Bellow follows a plot of the proportions of the males and females that stated their working condition as employed in a full time job.
+
+```{r echo=FALSE, fig.width=10, fig.height=4}
+tmpM <- c()
+tmpF <- c()
+meM <- c()
+meF <- c()
+epsilon = 0.2
+for(y in 1:length(years)) {
+  n <- sum(dadosM[y,2:8])
+	pr <- dadosM$fulltime[y]/n
+	tmpM <- c(tmpM, pr)
+	meM <- c(meM, qnorm(p=0.999)*sqrt(pr*(1-pr)/n))
+	
+	n <- sum(dadosF[y,2:8])
+	pr <- dadosF$fulltime[y]/n
+	tmpF <- c(tmpF, pr)
+	meF <- c(meF, qnorm(p=0.999)*sqrt(pr*(1-pr)/n))
+}
+plot(tmpM ~ dadosM$year, type="b", col="blue", ylim=c(0,1), xlab="Year", ylab="Percentage", main="Percentage of men and women with a full time job", xaxt="n")
+
+segments(years, tmpM-meM, years, tmpM+meM, col="blue")
+segments(years-epsilon,tmpM-meM,years+epsilon,tmpM-meM, col="blue")
+segments(years-epsilon,tmpM+meM,years+epsilon,tmpM+meM, col="blue")
+
+points(tmpF ~ dadosF$year, type="b", col="red", xaxt="n")
+segments(years, tmpF-meF, years, tmpF+meF, col="red")
+segments(years-epsilon,tmpF-meF,years+epsilon,tmpF-meF, col="red")
+segments(years-epsilon,tmpF+meF,years+epsilon,tmpF+meF, col="red")
+axis(1, at = years, las=2)
+
+legend("topright", col=c("red", "blue"), legend=c("Women (99.8% CI)", "Men (99.8% CI)"), lty=1)
+```
+
+The multiple comparisons here is done visually, and as one can see, in not a single year the confidence intervals crossed, leading us to reject the null hypothesis that the proportions are equal, so we accept the alternative hypothesis that there is a difference between the male and female populations. Also, note that the confidence interval displayed is of 99.8% instead of the usual 95% confidence level, this was done to account for the inflation of type I error that occurs in multiple comparisons.
+
+One interesting aspect of the last plot is that it seems that the [2008 financial crisis](http://en.wikipedia.org/wiki/Financial_crisis_of_2007???08) has only affected the male population (of the ones that have a full time job). In order to test if the male population has been affected lets define the following hypothesis test:
+
+$$ H_{0}: p_{2008} - p_{2010} = 0$$
+$$ H_{A}: P_{2008} - p_{2010} \neq 0 $$
+
+Lets define $\alpha = 5\%$ and we have $\hat{p_{2008}} = 0.6295884$, $\hat{p_{2010}} = 0.5377468$, $n_{2008} = 899$ and $n_{2010} = 861$. For this case, the margin of error is `r qnorm(p=0.975) * sqrt((0.6295884*(1-0.6295884))/899 + (0.5377468*(1-0.5377468))/861)`, so the confidence interval for the difference of the proportion is (`r 0.6295884-0.5377468-qnorm(p=0.975) * sqrt((0.6295884*(1-0.6295884))/899 + (0.5377468*(1-0.5377468))/861)`; `r 0.6295884-0.5377468+qnorm(p=0.975) * sqrt((0.6295884*(1-0.6295884))/899 + (0.5377468*(1-0.5377468))/861)`). As the confidence interval does not include 0, we reject the null hypothesis and accept the alternative hypothesis. For completeness, the $p-value$ is `r 2*(1-pnorm((0.6295884-0.5377468)/sqrt((0.6295884*(1-0.6295884))/899 + (0.5377468*(1-0.5377468))/861)))`, meaning that there is a close to 0 probability of obtaining a random sample where the difference in the proportion between males in full time jobs in 2008 and 2010 be at least `r 0.6295884-0.5377468` if the truth is that there is no difference.
+
+At last, we analyse our third observation, which is about school attendance between genders. Bellows follows a plot of the proportion of attendance between the genders along the years.
+
+```{r echo=FALSE, fig.width=10, fig.height=4}
+tmpM <- c()
+tmpF <- c()
+meM <- c()
+meF <- c()
+epsilon = 0.2
+for(y in 1:length(years)) {
+  n <- sum(dadosM[y,2:8])
+  pr <- dadosM$school[y]/n
+	tmpM <- c(tmpM, pr)
+	meM <- c(meM, qnorm(p=0.999)*sqrt(pr*(1-pr)/n))
+	
+	n <- sum(dadosF[y,2:8])
+	pr <- dadosF$school[y]/n
+	tmpF <- c(tmpF, pr)
+	meF <- c(meF, qnorm(p=0.999)*sqrt(pr*(1-pr)/n))
+}
+plot(tmpM ~ dadosM$year, type="b", col="blue", ylim=c(0,0.1), xlab="Year", ylab="Percentage", main="Percentage of men and women attending a school", xaxt="n")
+
+segments(years, tmpM-meM, years, tmpM+meM, col="blue")
+segments(years-epsilon,tmpM-meM,years+epsilon,tmpM-meM, col="blue")
+segments(years-epsilon,tmpM+meM,years+epsilon,tmpM+meM, col="blue")
+
+points(tmpF ~ dadosF$year, type="b", col="red", xaxt="n")
+segments(years, tmpF-meF, years, tmpF+meF, col="red")
+segments(years-epsilon,tmpF-meF,years+epsilon,tmpF-meF, col="red")
+segments(years-epsilon,tmpF+meF,years+epsilon,tmpF+meF, col="red")
+axis(1, at = years, las=2)
+
+legend("topright", col=c("red", "blue"), legend=c("Women (99.8% CI)", "Men (99.8% CI)"), lty=1)
+```
+
+Again, in order to avoid type I error inflation in multiple comparisons, it was displayed the 99.8% confidence interval. This time, however, we see no difference in the proportion of school attendance between the genders along the years. So, our initial assumption that there was a gap between the attendance of school of females and males that was closed along the years is not true, or put more formally, we have no statistical evidence to claim that there was a difference. The apparent evidence was probably caused due to a small school attendance in general, given that roughly only 4% of both genders attend school after they are 18 years older or more.
+
+Conclusion
+-----------------------
+In this work we approached questions related to differences in the working status by gender. Among the findings, it's still true that the stay at home tends to be the women, however, there was a great decrease of women that keep the house (the 95% confidence interval points to a descrease of 0.3211647 up to 0.4045647% since 1972). Also, the women increased their presence at the full time job market, but they have yet to achieve equality (of proportion). One interesting fact of the full time job market analysis is that only the males had a loss of jobs following the 2008 financial crisis, leading to a speculation that maybe there are jobs dominated by males which were the ones affected by the crisis, but this is a speculation that needs further studies. At last, to our surprise, we found no statistical evidence that there ever was a difference in the proportion of school attendance between the genders at the population of residents of the USA that have at least 18 years old. 
+
+
+### References
+
+[GSS2012]: Smith, Tom W., Michael Hout, and Peter V. Marsden. General Social Survey, 1972-2012 [Cumulative File]. ICPSR34802-v1. Storrs, CT: Roper Center for Public Opinion Research, University of Connecticut /Ann Arbor, MI: Inter-university Consortium for Political and Social Research [distributors], 2013-09-11. doi:10.3886/ICPSR34802.v1. Dataset available [here](http://www.icpsr.umich.edu/icpsrweb/ICPSR/studies/34802/version/1) and [here](https://d396qusza40orc.cloudfront.net/statistics%2Fproject%2Fgss1.html).
+
+### Appendix
+
+Bellow follows a sample of the data set:
+
+```
+"sex" "wrkstat"
+"55088" "Male" "Working Parttime"
+"55089" "Male" "Working Parttime"
+"55090" "Male" "Working Fulltime"
+"55091" "Female" "Other"
+"55092" "Female" "Retired"
+"55093" "Female" "Other"
+"55094" "Female" "Keeping House"
+"55095" "Female" "Keeping House"
+"55096" "Female" "Keeping House"
+"55097" "Female" "Working Fulltime"
+"55098" "Male" "Other"
+"55099" "Female" "Working Parttime"
+"55100" "Female" "Keeping House"
+"55101" "Female" "Other"
+"55102" "Male" "Working Parttime"
+"55103" "Female" "Working Fulltime"
+"55104" "Male" "Working Fulltime"
+"55105" "Female" "Working Fulltime"
+"55106" "Male" "Working Fulltime"
+"55107" "Female" "School"
+"55108" "Female" "Unempl, Laid Off"
+"55109" "Male" "Working Fulltime"
+"55110" "Male" "Working Fulltime"
+"55111" "Female" "Working Fulltime"
+"55112" "Male" "Retired"
+"55113" "Female" "Working Fulltime"
+"55114" "Male" "Working Fulltime"
+"55115" "Male" "Keeping House"
+"55116" "Female" "Retired"
+"55117" "Female" "Working Parttime"
+"55118" "Male" "Retired"
+"55119" "Female" "Working Fulltime"
+"55120" "Male" "Retired"
+"55121" "Male" "Working Fulltime"
+"55122" "Female" "Working Fulltime"
+"55123" "Male" "Working Fulltime"
+"55124" "Male" "Working Fulltime"
+```
